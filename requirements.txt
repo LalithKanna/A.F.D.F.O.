@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Basic requirements for fiber optic attenuation prediction
 numpy>=1.21.0
 pandas>=1.3.0
@@ -7,26 +6,10 @@ lightgbm>=3.3.0
 joblib>=1.1.0
 scipy>=1.7.0
 
-#Optional for advanced features
-#ydata-quality>=1.0.0
+# Optional for advanced features
+# ydata-quality>=1.0.0
 smogn>=0.1.0
 shap>=0.40.0
 matplotlib>=3.5.0
 seaborn>=0.11.0
-=======
-# Basic requirements for fiber optic attenuation prediction
-numpy>=1.21.0
-pandas>=1.3.0
-scikit-learn>=1.0.0
-lightgbm>=3.3.0
-joblib>=1.1.0
-scipy>=1.7.0
-
-#Optional for advanced features
-#ydata-quality>=1.0.0
-smogn>=0.1.0
-shap>=0.40.0
-matplotlib>=3.5.0
-seaborn>=0.11.0
->>>>>>> 8c60eb4ca74d55a02056cada1220cc2a541b6991
 optuna>=0.8.0
