@@ -989,7 +989,7 @@ def render_documentation_page():
         - It **separates the loss** into contributing components (e.g., 60% from fiber, 20% from connectors)
     5. **Results Display**: The user receives a clear view of the total loss, where it comes from, and how confident the system is.
 
-    > All predictions are based on previously learned patterns from historical and simulated deployment scenarios.
+    > All predictions are based on previously learned patterns from  simulated deployment scenarios.
 
     ---
 
