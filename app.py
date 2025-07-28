@@ -108,7 +108,7 @@ def load_training_metrics():
     try:
         # Try to load from common paths
         possible_paths = [
-            'models/cleaned_training_log.yaml'
+            'cleaned_training_log.yaml'
         ]
         
         for path in possible_paths:
