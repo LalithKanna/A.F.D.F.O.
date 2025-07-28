@@ -1,0 +1,73 @@
+best_model: lightgbm
+component_models_trained:
+- fiber_loss_dB
+- connector_loss_dB
+- splice_loss_dB
+- splitter_loss_dB
+- bend_loss_dB
+- environmental_loss_dB
+feature_groups:
+  connections: 3
+  engineered: 5
+  environmental: 4
+  interactions: 5
+  mechanical: 3
+  physical: 4
+features_used:
+- length_km
+- wavelength_nm
+- num_splices
+- num_connectors
+- fiber_type_encoded
+- fiber_subtype_encoded
+- installation_type_encoded
+- cable_type_encoded
+- temperature_C
+- humidity_percent
+- age_years
+- environmental_stress
+- bend_radius_mm
+- num_bends
+- splitter_ratio
+- attenuation_per_km
+- env_impact
+- connections_per_km
+- bend_severity
+- link_complexity
+- splitter_ratio_x_length
+- connectors_per_km
+- bends_per_radius
+- env_stress_x_length
+- length_squared
+hyperparameters:
+  bagging_fraction: 0.8619735357297884
+  bagging_freq: 9
+  boosting_type: gbdt
+  feature_fraction: 0.8791852618790481
+  lambda_l1: 1.5301797696764687
+  lambda_l2: 1.6291139465781226
+  learning_rate: 0.06551846603002656
+  metric: mae
+  min_child_samples: 5
+  num_leaves: 173
+  objective: regression
+  random_state: 42
+  verbosity: -1
+model_version: 1.1.0
+notes:
+- Added quantile regression for uncertainty estimation
+- Added component-wise loss prediction
+- Enhanced feature engineering with interaction terms
+- Optuna-based hyperparameter tuning
+- SHAP explainability integration
+- Fixed component model training with proper data alignment
+performance_metrics:
+  mae: 0.2887010928218811
+  mape: 1.8394594722989548
+  r2: 0.9958937948468631
+  rmse: 0.6495145087092863
+  safety_accuracy: 99.2423410563303
+  within_0.5db: 85.95585813110795
+  within_1db: 94.7293290875151
+  within_3db: 99.27528274953332
+timestamp: '2025-07-26 19:52:41'
