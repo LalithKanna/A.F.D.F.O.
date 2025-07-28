@@ -955,16 +955,166 @@ def render_model_evaluation_page():
 # Placeholder pages
 def render_documentation_page():
     st.title("📚 Documentation")
-    st.info("📝 Documentation page coming soon...")
+
     st.markdown("""
-    This page will contain:
-    - System architecture overview
-    - API documentation
-    - Feature descriptions
-    - Model methodology
-    - Usage guidelines
-    - Troubleshooting guide
+    # 🔧 A.F.D.F.O Documentation
+
+    ## 🛰️ What This System Does
+
+    **A.F.D.F.O** (AI-powered Fiber Deployment Feasibility & Optimization Tool) is a smart planning assistant for fiber optic network deployment. It helps engineers and planners:
+
+    - ✅ Predict the **total signal attenuation (in dB)** over a planned fiber link
+    - ✅ Estimate **uncertainty** in predictions (how confident the model is)
+    - ✅ Automatically fill in **missing input parameters** like bend radius
+    - ✅ Break down total attenuation into **component-wise losses**:
+        - Fiber
+        - Connectors
+        - Splices
+        - Splitters
+        - Bends
+        - Environment
+    - ✅ Identify **which component contributes most** to signal loss
+    - ✅ Support early-stage decision-making in **design, budgeting, and optimization**
+
+    ---
+
+    ## ⚙️ How It Works (High-Level)
+
+    1. **User Input**: Physical, mechanical, and environmental features of the fiber route are entered into the system.
+    2. **Feature Engineering**: The system creates additional informative variables by combining or transforming user inputs.
+    3. **Missing Data Handling**: If certain values (like bend radius) are not available, they are imputed using learned statistical relationships.
+    4. **Prediction**:
+        - The model predicts the **total attenuation**
+        - It also provides a **prediction range** (e.g., 3.2–3.8 dB) using quantile regression
+        - It **separates the loss** into contributing components (e.g., 60% from fiber, 20% from connectors)
+    5. **Results Display**: The user receives a clear view of the total loss, where it comes from, and how confident the system is.
+
+    > All predictions are based on previously learned patterns from historical and simulated deployment scenarios.
+
+    ---
+
+    ## 🧠 ML Models Used
+
+    - **Best Performing Model**: `LightGBM` (Gradient Boosted Decision Trees)
+    - **Model Type**: Regression
+    - **Features Used**: 25+ input and engineered variables, including environmental, physical, mechanical, and interaction terms
+    - **Uncertainty Estimation**: Enabled via **quantile regression**
+    - **Component-wise Models**:
+        - fiber_loss_dB
+        - connector_loss_dB
+        - splice_loss_dB
+        - splitter_loss_dB
+        - bend_loss_dB
+        - environmental_loss_dB
+    - **Explainability**: Integrated via SHAP (not shown in UI yet)
+    - **Tuning Method**: Optuna for hyperparameter optimization
+
+    ### 🔍 Feature Groups
+
+    - Connections: 3 features
+    - Engineered: 5
+    - Environmental: 4
+    - Interactions: 5
+    - Mechanical: 3
+    - Physical: 4
+
+    ---
+
+    ## 📁 Dataset Overview
+
+    The model was trained on a diverse, high-quality dataset that includes:
+
+    - Thousands of deployment samples
+    - Cleaned and filtered using domain rules (no impossible or negative loss values)
+    - Its completely based on simulated data covering:
+        - SMF/MMF
+        - Various subtypes (G.652.D, G.657.A1/A2/B3, OM3–OM5)
+        - All major installation types: underground, aerial, building, indoor
+        - Cable types: loose tube, tight buffered, drop, ribbon
+
+    ### ⚠️ Filtered Data Flags
+    - No negative/invalid losses
+    - No extreme or inconsistent values
+    - Valid physics-based safety margins and component consistency
+
+    ### 🔢 Numerical Feature Ranges
+
+    | Feature | Range |
+    |--------|--------|
+    | Wavelength (nm) | 850 – 1550 |
+    | Length (km) | 0.1 – 45 |
+    | Splices | 0 – 40 |
+    | Connectors | 2 – 68 |
+    | Splitter Ratio | 0 – 32 |
+    | Temperature (°C) | -30.5 – 82.9 |
+    | Humidity (%) | 15.5 – 94.9 |
+    | Bend Radius (mm) | 5 – 94.8 |
+    | Age (years) | 0.1 – 15 |
+    | Total Attenuation | 0.22 – 80 dB |
+
+    > Values outside these ranges may reduce prediction accuracy.
+
+    ---
+
+    ## 📈 Model Accuracy & Performance
+
+    ### 🏆 Overall Metrics (Total Attenuation Prediction)
+
+    | Metric              | Value |
+    |---------------------|--------|
+    | MAE (Mean Abs Error)| 0.29 dB |
+    | RMSE                | 0.65 dB |
+    | MAPE                | 1.84% |
+    | R² Score            | 0.9959 |
+    | Predictions within 0.5 dB | 85.96% |
+    | Predictions within 1 dB   | 94.73% |
+    | Predictions within 3 dB   | 99.28% |
+    | Safety Rule Accuracy      | 99.24% |
+
+    > These metrics were validated on held-out test data from within the training distribution.
+
+    ### 🟢 Most Accurate For:
+
+    - Standard single-mode deployments (SMF, G.652.D, G.657.A1/A2)
+    - Typical lengths (1–30 km)
+    - Common install types: underground, aerial
+    - Reasonable environmental ranges (10–60 °C, humidity < 90%)
+    - Loss budgets between 0.5 and 25 dB
+
+    ### 🔴 Use With Caution:
+
+    - Extremely long or short fibers (<0.5 km or >45 km)
+    - Exotic fiber types (OM5, OM1)
+    - Highly aged installations (>15 years)
+    - Unusual or extreme weather conditions
+
+    ---
+
+    ## 🧑‍💻 Deployment Notes for Engineers
+
+    - This model assumes all inputs are consistent and physics-aligned.
+    - Inputs outside trained ranges **will still be accepted**, but predictions may have higher uncertainty.
+    - For production deployment, monitoring prediction uncertainty is strongly advised.
+    - Outputs are intended to **assist**, not replace, expert judgment in deployment planning.
+
+    ---
+
+    ## 🆕 Prototype Version: `1.0`
+
+    **Changelog Highlights**
+    - ➕ Added uncertainty prediction (quantile regression)
+    - 🔍 Component-level loss breakdown
+    - 📐 Better feature engineering (interactions and polynomial terms)
+    - ⚙️ Optuna-based tuning for model robustness
+    - 🔎 SHAP explainability integration
+
+    ---
+
+    ## 📬 Support
+
+    For issues or feature requests, please contact Phone Number:7094501353,Gmail: rlalithkanna@gmail.com"
     """)
+
 
 def render_normal_calculation_page():
     st.title("📊 Normal Calculation")
