@@ -19,6 +19,32 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+@st.cache_resource
+def load_all_models():
+    model_files = {
+        'fiber_loss': 'fiber_attenuation_model_component_fiberloss.pkl',
+        'connector_loss': 'fiber_attenuation_model_component_connectorloss.pkl',
+        'splice_loss': 'fiber_attenuation_model_component_spliceloss.pkl',
+        'splitter_loss': 'fiber_attenuation_model_component_splitterloss.pkl',
+        'bend_loss': 'fiber_attenuation_model_component_bendloss.pkl',
+        'environmental_loss': 'fiber_attenuation_model_component_environmentalloss.pkl',
+        'quantile_lower': 'fiber_attenuation_model_quantile_lower.pkl',
+        'quantile_median': 'fiber_attenuation_model_quantile_median.pkl',
+        'quantile_upper': 'fiber_attenuation_model_quantile_upper.pkl'
+    }
+
+    models = {}
+    for name, path in model_files.items():
+        if os.path.exists(path):
+            models[name] = joblib.load(path)
+        else:
+            st.warning(f"⚠️ Model file not found: {path}")
+    return models
+
+models = load_all_models()
+
+
+
 # Custom CSS for better styling
 st.markdown("""
 <style>
@@ -108,7 +134,7 @@ def load_training_metrics():
     try:
         # Try to load from common paths
         possible_paths = [
-            'cleaned_training_log.yaml'
+            'models/cleaned_training_log.yaml'
         ]
         
         for path in possible_paths:
@@ -214,60 +240,23 @@ def get_feature_definitions():
 
 # Component loss prediction models (mock implementation)
 def predict_component_losses(inputs):
-    """Predict individual component losses using specialized models"""
-    
-    # Mock component loss models - replace with actual trained models
+    """Predict component losses using real ML models"""
     component_losses = {}
-    
-    # Fiber Loss Model
-    fiber_loss_per_km = {
-        850: 2.5,   # dB/km for 850nm
-        1300: 0.4,  # dB/km for 1300nm  
-        1310: 0.35, # dB/km for 1310nm
-        1550: 0.2   # dB/km for 1550nm
-    }
-    base_fiber_loss = fiber_loss_per_km.get(inputs['wavelength_nm'], 0.35) * inputs['length_km']
-    
-    # Add environmental effects
-    temp_factor = 1.0 + (abs(inputs['temperature_C'] - 20) * 0.001)
-    age_factor = 1.0 + (inputs['age_years'] * 0.02)
-    
-    component_losses['fiber_loss'] = base_fiber_loss * temp_factor * age_factor
-    
-    # Connector Loss Model
-    connector_loss_base = {
-        'SMF': 0.3,  # dB per connector
-        'MMF': 0.5   # dB per connector
-    }
-    connector_base = connector_loss_base.get(inputs['fiber_type_encoded'], 0.3)
-    component_losses['connector_loss'] = connector_base * inputs['num_connectors']
-    
-    # Splice Loss Model
-    splice_loss_base = {
-        'SMF': 0.05,  # dB per splice
-        'MMF': 0.1    # dB per splice
-    }
-    splice_base = splice_loss_base.get(inputs['fiber_type_encoded'], 0.05)
-    component_losses['splice_loss'] = splice_base * inputs['num_splices']
-    
-    # Splitter Loss Model
-    splitter_losses = {1: 0, 2: 3.5, 4: 7.0, 8: 10.5, 16: 14.0, 32: 17.5}
-    component_losses['splitter_loss'] = splitter_losses.get(inputs['splitter_ratio'], 0)
-    
-    # Bend Loss Model
-    bend_radius_threshold = 15.0  # mm
-    if inputs['bend_radius_mm'] < bend_radius_threshold:
-        bend_penalty = (bend_radius_threshold - inputs['bend_radius_mm']) * 0.1
-        component_losses['bend_loss'] = bend_penalty * inputs['num_bends']
-    else:
-        component_losses['bend_loss'] = 0.01 * inputs['num_bends']  # Minimal loss for good bends
-    
-    # Environmental Loss Model  
-    humidity_factor = max(0, (inputs['humidity_percent'] - 60) * 0.002)
-    stress_factor = inputs['environmental_stress'] * 0.5
-    component_losses['environmental_loss'] = humidity_factor + stress_factor
-    
+    input_df = pd.DataFrame([inputs])
+
+    for comp in ['fiber_loss', 'connector_loss', 'splice_loss', 'splitter_loss', 'bend_loss', 'environmental_loss']:
+        model = models.get(comp)
+        if model:
+            try:
+                component_losses[comp] = model.predict(input_df)[0]
+            except Exception as e:
+                st.error(f"{comp} prediction failed: {e}")
+                component_losses[comp] = 0.0
+        else:
+            component_losses[comp] = 0.0
+
     return component_losses
+
 
 def calculate_power_budget_analysis(total_loss, inputs):
     """Calculate power budget and determine link safety"""
@@ -439,19 +428,18 @@ def render_home_page():
 # AI Prediction Page  
 def render_ai_prediction_page():
     st.title("🤖 AI-Powered Attenuation Prediction")
-    
-    # Load model info
-    model_info, component_models = load_model_info()
+
+    # Load models
+    models = load_all_models()
     feature_defs = get_feature_definitions()
-    
+
     col1, col2 = st.columns([1, 2])
-    
+
     with col1:
         st.markdown("### 🔧 Input Parameters")
-        
+
         # Collect input features
         inputs = {}
-        
         for group_name, features in feature_defs.items():
             with st.expander(f"{group_name}", expanded=True):
                 for feature, config in features.items():
@@ -459,7 +447,7 @@ def render_ai_prediction_page():
                         inputs[feature] = st.selectbox(
                             feature.replace('_', ' ').title(),
                             config['options'],
-                            index=config['options'].index(config['default']) if 'default' in config else 0
+                            index=config['options'].index(config.get('default', config['options'][0]))
                         )
                     else:
                         inputs[feature] = st.number_input(
@@ -469,48 +457,42 @@ def render_ai_prediction_page():
                             value=config['default'],
                             step=config.get('step', 0.1)
                         )
-        
+
         # Model selection
         st.markdown("### 🎯 Model Selection")
         selected_models = st.multiselect(
             "Choose models for prediction:",
-            ['lightgbm', 'random_forest', 'quantile_lower', 'quantile_median', 'quantile_upper'],
-            default=['lightgbm', 'quantile_lower', 'quantile_upper']
+            ['quantile_lower', 'quantile_median', 'quantile_upper'],
+            default=['quantile_lower', 'quantile_median', 'quantile_upper']
         )
-        
+
         predict_button = st.button("🚀 Predict Attenuation", type="primary", use_container_width=True)
-    
+
     with col2:
         st.markdown("### 📊 Prediction Results")
-        
+
         if predict_button:
-            # Use component loss models to predict individual losses
+            # Get component losses
             component_losses = predict_component_losses(inputs)
-            total_predicted_loss = sum(component_losses.values())
-            
-            # Mock AI model predictions (you can replace this with actual model inference)
-            base_prediction = total_predicted_loss + np.random.normal(0, 0.1)
-            
-            # Create results
+            total_component_loss = sum(component_losses.values())
+
+            input_df = pd.DataFrame([inputs])
             results = {}
-            if 'lightgbm' in selected_models:
-                results['LightGBM'] = base_prediction + np.random.normal(0, 0.05)
-            if 'random_forest' in selected_models:
-                results['Random Forest'] = base_prediction + np.random.normal(0, 0.08)
-            if 'quantile_lower' in selected_models:
-                results['Lower Bound (10%)'] = base_prediction - 0.3
-            if 'quantile_median' in selected_models:
-                results['Median (50%)'] = base_prediction
-            if 'quantile_upper' in selected_models:
-                results['Upper Bound (90%)'] = base_prediction + 0.3
-            
-            # Get main prediction for power budget analysis
-            main_pred = results.get('LightGBM', list(results.values())[0])
-            
-            # Calculate power budget analysis
+
+            # Predict using quantile models
+            if 'quantile_lower' in selected_models and 'quantile_lower' in models:
+                results['Lower Bound (10%)'] = models['quantile_lower'].predict(input_df)[0]
+            if 'quantile_median' in selected_models and 'quantile_median' in models:
+                results['Median (50%)'] = models['quantile_median'].predict(input_df)[0]
+            if 'quantile_upper' in selected_models and 'quantile_upper' in models:
+                results['Upper Bound (90%)'] = models['quantile_upper'].predict(input_df)[0]
+
+            main_pred = results.get('Median (50%)', total_component_loss)
+
+            # Power budget analysis
             power_analysis = calculate_power_budget_analysis(main_pred, inputs)
-            
-            # Display Link Status prominently
+
+            # Display status
             st.markdown(f"""
             <div style="background: {power_analysis['status_color']}; color: white; padding: 1.5rem; 
                         border-radius: 10px; text-align: center; margin-bottom: 1rem; 
@@ -519,152 +501,107 @@ def render_ai_prediction_page():
                 <h3>Power Margin: {power_analysis['power_margin']:.2f} dB</h3>
             </div>
             """, unsafe_allow_html=True)
-            
-            # Display main predictions
-            if results:
-                col_a, col_b = st.columns(2)
-                
-                with col_a:
-                    st.markdown(f"""
-                    <div class="metric-card">
-                        <h3>🔍 Total Loss Prediction</h3>
-                        <h2>{main_pred:.3f} dB</h2>
-                        <p>AI Model Prediction</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-                
-                with col_b:
-                    st.markdown(f"""
-                    <div class="metric-card">
-                        <h3>⚡ Power Budget</h3>
-                        <h2>{power_analysis['total_budget']:.1f} dB</h2>
-                        <p>Available Budget</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-                
-                # Power Budget Details
-                st.markdown("### 🔋 Power Budget Analysis")
-                
-                col1, col2, col3, col4 = st.columns(4)
-                
-                with col1:
-                    st.metric("TX Power", f"{power_analysis['tx_power']:.1f} dBm")
-                
-                with col2:
-                    st.metric("RX Sensitivity", f"{power_analysis['rx_sensitivity']:.1f} dBm")
-                
-                with col3:
-                    st.metric("Safety Margin", f"{power_analysis['safety_margin']:.1f} dB")
-                
-                with col4:
-                    st.metric("Required Budget", f"{power_analysis['required_budget']:.2f} dB")
-                
-                # Power budget visualization
-                fig = go.Figure()
-                
-                categories = ['Available Budget', 'Total Loss', 'Safety Margin', 'Remaining Margin']
-                values = [
+
+            # Main prediction and budget
+            col_a, col_b = st.columns(2)
+            with col_a:
+                st.markdown(f"""
+                <div class="metric-card">
+                    <h3>🔍 Total Loss Prediction</h3>
+                    <h2>{main_pred:.3f} dB</h2>
+                    <p>Predicted by Quantile Model</p>
+                </div>
+                """, unsafe_allow_html=True)
+            with col_b:
+                st.markdown(f"""
+                <div class="metric-card">
+                    <h3>⚡ Power Budget</h3>
+                    <h2>{power_analysis['total_budget']:.1f} dB</h2>
+                    <p>Available Budget</p>
+                </div>
+                """, unsafe_allow_html=True)
+
+            # Budget metrics
+            st.markdown("### 🔋 Power Budget Analysis")
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("TX Power", f"{power_analysis['tx_power']:.1f} dBm")
+            c2.metric("RX Sensitivity", f"{power_analysis['rx_sensitivity']:.1f} dBm")
+            c3.metric("Safety Margin", f"{power_analysis['safety_margin']:.1f} dB")
+            c4.metric("Required Budget", f"{power_analysis['required_budget']:.2f} dB")
+
+            # Budget visualization
+            fig = px.bar(
+                x=['Available Budget', 'Total Loss', 'Safety Margin', 'Remaining Margin'],
+                y=[
                     power_analysis['total_budget'],
                     main_pred,
                     power_analysis['safety_margin'],
                     max(0, power_analysis['power_margin'])
-                ]
-                colors = ['lightblue', 'orange', 'yellow', 'lightgreen' if power_analysis['power_margin'] > 0 else 'red']
-                
-                fig = px.bar(
-                    x=categories,
-                    y=values,
-                    title="Power Budget Breakdown",
-                    color=categories,
-                    color_discrete_sequence=colors
+                ],
+                color=['Available Budget', 'Total Loss', 'Safety Margin', 'Remaining Margin'],
+                color_discrete_sequence=['lightblue', 'orange', 'yellow', 'lightgreen' if power_analysis['power_margin'] > 0 else 'red'],
+                title="Power Budget Breakdown"
+            )
+            fig.update_layout(height=400, showlegend=False)
+            st.plotly_chart(fig, use_container_width=True)
+
+            # Uncertainty band
+            if 'Lower Bound (10%)' in results and 'Upper Bound (90%)' in results:
+                fig = go.Figure()
+                fig.add_trace(go.Scatter(
+                    x=[0, 1], y=[results['Lower Bound (10%)']]*2,
+                    fill=None, mode='lines', line_color='rgba(0,0,0,0)', showlegend=False
+                ))
+                fig.add_trace(go.Scatter(
+                    x=[0, 1], y=[results['Upper Bound (90%)']]*2,
+                    fill='tonexty', mode='lines', name='Uncertainty Band (80%)',
+                    fillcolor='rgba(102, 126, 234, 0.3)', line_color='rgba(0,0,0,0)'
+                ))
+                fig.add_trace(go.Scatter(
+                    x=[0.5], y=[main_pred],
+                    mode='markers', name='Primary Prediction',
+                    marker=dict(size=15, color='red')
+                ))
+                fig.add_hline(
+                    y=power_analysis['total_budget'] - power_analysis['safety_margin'],
+                    line_dash="dash", line_color="green",
+                    annotation_text="Max Allowable Loss"
                 )
-                fig.update_layout(height=400, showlegend=False)
+                fig.update_layout(
+                    title="Prediction with Uncertainty vs Power Budget",
+                    yaxis_title="Attenuation (dB)",
+                    height=300,
+                    showlegend=True
+                )
                 st.plotly_chart(fig, use_container_width=True)
-                
-                # Uncertainty visualization
-                if 'Lower Bound (10%)' in results and 'Upper Bound (90%)' in results:
-                    fig = go.Figure()
-                    
-                    # Add uncertainty band
-                    fig.add_trace(go.Scatter(
-                        x=[0, 1],
-                        y=[results['Lower Bound (10%)'], results['Lower Bound (10%)']],
-                        fill=None,
-                        mode='lines',
-                        line_color='rgba(0,0,0,0)',
-                        showlegend=False
-                    ))
-                    
-                    fig.add_trace(go.Scatter(
-                        x=[0, 1],
-                        y=[results['Upper Bound (90%)'], results['Upper Bound (90%)']],
-                        fill='tonexty',
-                        mode='lines',
-                        line_color='rgba(0,0,0,0)',
-                        name='Uncertainty Band (80%)',
-                        fillcolor='rgba(102, 126, 234, 0.3)'
-                    ))
-                    
-                    # Add main prediction
-                    fig.add_trace(go.Scatter(
-                        x=[0.5],
-                        y=[main_pred],
-                        mode='markers',
-                        marker=dict(size=15, color='red'),
-                        name='Primary Prediction'
-                    ))
-                    
-                    # Add power budget threshold line
-                    fig.add_hline(
-                        y=power_analysis['total_budget'] - power_analysis['safety_margin'],
-                        line_dash="dash",
-                        line_color="green",
-                        annotation_text="Maximum Allowable Loss"
-                    )
-                    
-                    fig.update_layout(
-                        title="Prediction with Uncertainty vs Power Budget",
-                        yaxis_title="Attenuation (dB)",
-                        showlegend=True,
-                        height=300
-                    )
-                    
-                    st.plotly_chart(fig, use_container_width=True)
-                
-                # All predictions table
-                df_results = pd.DataFrame(list(results.items()), columns=['Model', 'Prediction (dB)'])
-                df_results['Prediction (dB)'] = df_results['Prediction (dB)'].round(3)
-                df_results['Within Budget'] = df_results['Prediction (dB)'] <= (power_analysis['total_budget'] - power_analysis['safety_margin'])
-                st.dataframe(df_results, use_container_width=True)
-            
-            # Component breakdown using actual component models
+
+            # Prediction table
+            df_results = pd.DataFrame(list(results.items()), columns=['Model', 'Prediction (dB)'])
+            df_results['Prediction (dB)'] = df_results['Prediction (dB)'].round(3)
+            df_results['Within Budget'] = df_results['Prediction (dB)'] <= (power_analysis['total_budget'] - power_analysis['safety_margin'])
+            st.dataframe(df_results, use_container_width=True)
+
+            # 🔍 Component Loss Breakdown
             st.markdown("### 🔍 Component Loss Breakdown (Model-Based)")
-            
-            # Component breakdown chart
             fig = px.pie(
                 values=list(component_losses.values()),
-                names=[name.replace('_', ' ').title() for name in component_losses.keys()],
+                names=[k.replace('_', ' ').title() for k in component_losses],
                 title="Loss Attribution by Component (Predicted)"
             )
             st.plotly_chart(fig, use_container_width=True)
-            
-            # Component table with detailed breakdown
+
             df_components = pd.DataFrame([
                 {
-                    'Component': name.replace('_', ' ').title(),
-                    'Loss (dB)': loss,
-                    'Percentage': (loss / sum(component_losses.values()) * 100),
-                    'Model Used': component_models.get(name, 'Physical Model')
-                }
-                for name, loss in component_losses.items()
+                    'Component': k.replace('_', ' ').title(),
+                    'Loss (dB)': round(v, 3),
+                    'Percentage': round((v / total_component_loss * 100), 1),
+                    'Model Used': 'ML Model'
+                } for k, v in component_losses.items()
             ])
-            df_components['Loss (dB)'] = df_components['Loss (dB)'].round(3)
-            df_components['Percentage'] = df_components['Percentage'].round(1)
             st.dataframe(df_components, use_container_width=True)
-            
-            # Risk Assessment
+
+            # 🛡️ Risk Assessment
             st.markdown("### 🛡️ Risk Assessment")
-            
             risk_factors = []
             if power_analysis['power_margin'] < 1:
                 risk_factors.append("⚠️ Low power margin - consider system upgrades")
@@ -674,16 +611,15 @@ def render_ai_prediction_page():
                 risk_factors.append("⚠️ High environmental stress - monitor conditions")
             if inputs['age_years'] > 10:
                 risk_factors.append("⚠️ Aging infrastructure - plan for maintenance")
-            
+
             if risk_factors:
                 for risk in risk_factors:
                     st.warning(risk)
             else:
                 st.success("✅ No significant risk factors identified")
-            
-            # Recommendations
+
+            # 💡 Recommendations
             st.markdown("### 💡 Optimization Recommendations")
-            
             recommendations = []
             if component_losses['connector_loss'] > 1.0:
                 recommendations.append("🔧 Consider reducing number of connectors or using higher-grade connectors")
@@ -693,12 +629,13 @@ def render_ai_prediction_page():
                 recommendations.append("🔧 Increase bend radius to reduce losses")
             if power_analysis['power_margin'] < 0:
                 recommendations.append("🔧 Consider higher power transmitter or more sensitive receiver")
-            
+
             if recommendations:
                 for rec in recommendations:
                     st.info(rec)
             else:
                 st.success("✅ System appears well-optimized")
+
 
 # Model Evaluation Page
 def render_model_evaluation_page():
@@ -989,7 +926,7 @@ def render_documentation_page():
         - It **separates the loss** into contributing components (e.g., 60% from fiber, 20% from connectors)
     5. **Results Display**: The user receives a clear view of the total loss, where it comes from, and how confident the system is.
 
-    > All predictions are based on previously learned patterns from  simulated deployment scenarios.
+    > All predictions are based on previously learned patterns from historical and simulated deployment scenarios.
 
     ---
 
