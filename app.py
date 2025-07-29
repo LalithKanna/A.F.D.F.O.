@@ -10,6 +10,7 @@ import yaml
 from datetime import datetime
 import warnings
 import os
+from sklearn.preprocessing import LabelEncoder
 
 warnings.filterwarnings('ignore')
 
@@ -45,6 +46,45 @@ def load_all_models():
         else:
             st.warning(f"⚠️ Model file not found: {path}")
     return models
+
+@st.cache_resource
+def create_label_encoders():
+    """Create and configure label encoders for categorical features"""
+    encoders = {}
+    
+    # Define the categorical mappings based on your training data
+    categorical_mappings = {
+        'fiber_type_encoded': ['SMF', 'MMF'],
+        'fiber_subtype_encoded': ['G.652.D', 'G.657.A1', 'G.657.A2', 'G.657.B3', 'OM1', 'OM2', 'OM3', 'OM4', 'OM5'],
+        'installation_type_encoded': ['Aerial', 'Underground', 'Indoor', 'Building'],
+        'cable_type_encoded': ['Loose Tube', 'Tight Buffer', 'Ribbon', 'Drop_cable']
+    }
+    
+    for feature, categories in categorical_mappings.items():
+        encoder = LabelEncoder()
+        encoder.fit(categories)
+        encoders[feature] = encoder
+    
+    return encoders
+
+def encode_categorical_features(inputs, encoders):
+    """Encode categorical features to numeric values"""
+    encoded_inputs = inputs.copy()
+    
+    categorical_features = ['fiber_type_encoded', 'fiber_subtype_encoded', 
+                          'installation_type_encoded', 'cable_type_encoded']
+    
+    for feature in categorical_features:
+        if feature in encoded_inputs and feature in encoders:
+            try:
+                # Transform the categorical value to numeric
+                encoded_inputs[feature] = encoders[feature].transform([encoded_inputs[feature]])[0]
+            except ValueError as e:
+                st.error(f"Unknown category '{encoded_inputs[feature]}' for feature '{feature}'")
+                # Use default encoding (first category)
+                encoded_inputs[feature] = 0
+    
+    return encoded_inputs
 
 # Custom CSS for better styling
 st.markdown("""
@@ -209,10 +249,14 @@ def get_feature_definitions():
         }
     }
 
-def predict_component_losses(inputs, models):
-    """Predict component losses using real ML models"""
+def predict_component_losses(inputs, models, encoders):
+    """Predict component losses using real ML models with proper encoding"""
     component_losses = {}
-    input_df = pd.DataFrame([inputs])
+    
+    # Encode categorical features
+    encoded_inputs = encode_categorical_features(inputs, encoders)
+    input_df = pd.DataFrame([encoded_inputs])
+    
     for comp in ['fiber_loss', 'connector_loss', 'splice_loss', 'splitter_loss', 'bend_loss', 'environmental_loss']:
         model = models.get(comp)
         if model:
@@ -379,8 +423,9 @@ def render_home_page():
 def render_ai_prediction_page():
     st.title("🤖 AI-Powered Attenuation Prediction")
 
-    # Load models
+    # Load models and encoders
     models = load_all_models()
+    encoders = create_label_encoders()
     feature_defs = get_feature_definitions()
 
     col1, col2 = st.columns([1, 2])
@@ -422,20 +467,27 @@ def render_ai_prediction_page():
         st.markdown("### 📊 Prediction Results")
 
         if predict_button:
-            # Get component losses
-            component_losses = predict_component_losses(inputs, models)
+            # Get component losses with proper encoding
+            component_losses = predict_component_losses(inputs, models, encoders)
             total_component_loss = sum(component_losses.values())
 
-            input_df = pd.DataFrame([inputs])
+            # Encode inputs for quantile predictions
+            encoded_inputs = encode_categorical_features(inputs, encoders)
+            input_df = pd.DataFrame([encoded_inputs])
             results = {}
 
             # Predict using quantile models
-            if 'quantile_lower' in selected_models and 'quantile_lower' in models:
-                results['Lower Bound (10%)'] = models['quantile_lower'].predict(input_df)[0]
-            if 'quantile_median' in selected_models and 'quantile_median' in models:
-                results['Median (50%)'] = models['quantile_median'].predict(input_df)[0]
-            if 'quantile_upper' in selected_models and 'quantile_upper' in models:
-                results['Upper Bound (90%)'] = models['quantile_upper'].predict(input_df)[0]
+            try:
+                if 'quantile_lower' in selected_models and 'quantile_lower' in models:
+                    results['Lower Bound (10%)'] = models['quantile_lower'].predict(input_df)[0]
+                if 'quantile_median' in selected_models and 'quantile_median' in models:
+                    results['Median (50%)'] = models['quantile_median'].predict(input_df)[0]
+                if 'quantile_upper' in selected_models and 'quantile_upper' in models:
+                    results['Upper Bound (90%)'] = models['quantile_upper'].predict(input_df)[0]
+            except Exception as e:
+                st.error(f"Prediction failed: {e}")
+                st.info("Please check that all categorical values are valid.")
+                return
 
             main_pred = results.get('Median (50%)', total_component_loss)
 
