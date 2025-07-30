@@ -1007,162 +1007,316 @@ def render_documentation_page():
     st.title("📚 Documentation")
 
     st.markdown("""
-    # 🔧 A.F.D.F.O Documentation
+    # 📚 A.F.D.F.O Complete Documentation
 
-    ## 🛰️ What This System Does
+## 🛰️ Executive Summary
 
-    **A.F.D.F.O** (AI-powered Fiber Deployment Feasibility & Optimization Tool) is a smart planning assistant for fiber optic network deployment. It helps engineers and planners:
+**A.F.D.F.O** (AI-powered Fiber Deployment Feasibility & Optimization Tool) is a decision support and planning system that leverages machine learning to optimize fiber optic network deployment. Designed specifically for the needs of small ISPs in India, especially those contributing to government-backed initiatives like BharatNet, this tool provides accurate, component-level attenuation prediction, risk analysis, and planning recommendations.
 
-    - ✅ Predict the **total signal attenuation (in dB)** over a planned fiber link
-    - ✅ Estimate **uncertainty** in predictions (how confident the model is)
-    - ✅ Automatically fill in **missing input parameters** like bend radius
-    - ✅ Break down total attenuation into **component-wise losses**:
-        - Fiber
-        - Connectors
-        - Splices
-        - Splitters
-        - Bends
-        - Environment
-    - ✅ Identify **which component contributes most** to signal loss
-    - ✅ Support early-stage decision-making in **design, budgeting, and optimization**
+It replaces error-prone manual calculations with an intelligent, transparent, and automated planning assistant—helping ISPs reduce costs, time delays, and deployment failures.
 
-    ---
+---
 
-    ## ⚙️ How It Works (High-Level)
+## 🔧 What This System Does
 
-    1. **User Input**: Physical, mechanical, and environmental features of the fiber route are entered into the system.
-    2. **Feature Engineering**: The system creates additional informative variables by combining or transforming user inputs.
-    3. **Missing Data Handling**: If certain values (like bend radius) are not available, they are imputed using learned statistical relationships.
-    4. **Prediction**:
-        - The model predicts the **total attenuation**
-        - It also provides a **prediction range** (e.g., 3.2–3.8 dB) using quantile regression
-        - It **separates the loss** into contributing components (e.g., 60% from fiber, 20% from connectors)
-    5. **Results Display**: The user receives a clear view of the total loss, where it comes from, and how confident the system is.
+**A.F.D.F.O** is a smart planning assistant for fiber optic network deployment. It helps engineers and planners:
 
-    > All predictions are based on previously learned patterns from simulated deployment scenarios.
+- ✅ Predict the **total signal attenuation (in dB)** over a planned fiber link
+- ✅ Estimate **uncertainty** in predictions (how confident the model is)
+- ✅ Automatically fill in **missing input parameters** like bend radius
+- ✅ Break down total attenuation into **component-wise losses**:
+    - Fiber
+    - Connectors
+    - Splices
+    - Splitters
+    - Bends
+    - Environment
+- ✅ Identify **which component contributes most** to signal loss
+- ✅ Support early-stage decision-making in **design, budgeting, and optimization**
 
-    ---
+---
 
-    ## 🧠 ML Models Used
+## 🔍 Understanding Attenuation and Its Impact
 
-    - **Best Performing Model**: `LightGBM` (Gradient Boosted Decision Trees)
-    - **Model Type**: Regression
-    - **Features Used**: 25+ input and engineered variables, including environmental, physical, mechanical, and interaction terms
-    - **Uncertainty Estimation**: Enabled via **quantile regression**
-    - **Component-wise Models**:
-        - fiber_loss_dB
-        - connector_loss_dB
-        - splice_loss_dB
-        - splitter_loss_dB
-        - bend_loss_dB
-        - environmental_loss_dB
-    - **Explainability**: Integrated via SHAP (not shown in UI yet)
-    - **Tuning Method**: Optuna for hyperparameter optimization
+### What Is Attenuation?
 
-    ### 🔍 Feature Groups
+Attenuation refers to the loss of signal strength as light travels through an optical fiber. It is typically measured in decibels (dB) and increases due to factors such as:
 
-    - Connections: 3 features
-    - Engineered: 5
-    - Environmental: 4
-    - Interactions: 5
-    - Mechanical: 3
-    - Physical: 4
+- Fiber length
+- Connectors and splices
+- Bends in the cable
+- Environmental conditions
+- Aging of the fiber
 
-    ---
+### Why It Matters for ISPs
 
-    ## 📁 Dataset Overview
+Attenuation directly impacts:
+- **Network reliability** (signal fails if too much loss occurs)
+- **Design choices** (e.g., splitter type, fiber grade, amplifiers)
+- **Budget and equipment planning** (e.g., additional components to compensate for loss)
 
-    The model was trained on a diverse, high-quality dataset that includes:
+Even small miscalculations can lead to:
+- **Overbudgeting** (overestimating loss → unnecessary spend)
+- **Network failure** (underestimating loss → signal issues and rework)
+- **Delays** in rollout and increased customer dissatisfaction
 
-    - Thousands of deployment samples
-    - Cleaned and filtered using domain rules (no impossible or negative loss values)
-    - It's completely based on simulated data covering:
-        - SMF/MMF
-        - Various subtypes (G.652.D, G.657.A1/A2/B3, OM3–OM5)
-        - All major installation types: underground, aerial, building, indoor
-        - Cable types: loose tube, tight buffered, drop, ribbon
+---
 
-    ### ⚠️ Filtered Data Flags
-    - No negative/invalid losses
-    - No extreme or inconsistent values
-    - Valid physics-based safety margins and component consistency
+## 🇮🇳 Current Practices in Small Indian ISPs
 
-    ### 🔢 Numerical Feature Ranges
+### Manual Calculation Workflow
 
-    | Feature | Range |
-    |--------|--------|
-    | Wavelength (nm) | 850 – 1550 |
-    | Length (km) | 0.1 – 45 |
-    | Splices | 0 – 40 |
-    | Connectors | 2 – 68 |
-    | Splitter Ratio | 0 – 32 |
-    | Temperature (°C) | -30.5 – 82.9 |
-    | Humidity (%) | 15.5 – 94.9 |
-    | Bend Radius (mm) | 5 – 94.8 |
-    | Age (years) | 0.1 – 15 |
-    | Total Attenuation | 0.22 – 80 dB |
+Most small ISPs in India continue to use:
+- Excel-based or paper-based methods
+- Static formula-based estimation
+- Heuristics or technician judgement for safety margins
 
-    > Values outside these ranges may reduce prediction accuracy.
+### Why They Prefer Manual Over Advanced Tools
 
-    ---
+The primary reason small Indian ISPs avoid complex attenuation tools is **cost and practicality**. They operate on tight budgets and often deploy on small scales, so they don't find it justifiable to invest in high-cost enterprise software.
 
-    ## 📈 Model Accuracy & Performance
+Manual methods, though time-consuming, are perceived as sufficient for their limited-scale needs. Many are willing to compensate for inaccuracies with extra time or material, as the cost of errors usually remains within acceptable bounds of their local budgets.
 
-    ### 🏆 Overall Metrics (Total Attenuation Prediction)
+However, a key unresolved pain point still exists: **Overestimating or underestimating attenuation** often results in either wasted components or network performance issues, which—while not catastrophic—lead to avoidable overspending, extra trips, and customer complaints.
 
-    | Metric              | Value |
-    |---------------------|--------|
-    | MAE (Mean Abs Error)| 0.29 dB |
-    | RMSE                | 0.65 dB |
-    | MAPE                | 1.84% |
-    | R² Score            | 0.9959 |
-    | Predictions within 0.5 dB | 85.96% |
-    | Predictions within 1 dB   | 94.73% |
-    | Predictions within 3 dB   | 99.28% |
-    | Safety Rule Accuracy      | 99.24% |
+---
 
-    > These metrics were validated on held-out test data from within the training distribution.
+## ❌ Key Pain Points in the Existing Approach
 
-    ### 🟢 Most Accurate For:
+| Issue | Impact |
+|-------|---------|
+| ❌ Inaccurate Attenuation Estimates | Over- or under-provisioning of components |
+| ❌ Late Discovery of Power Mismatch | Redesign and rework during or post-deployment |
+| ❌ Lack of Component Diagnostics | Inability to identify weak points in the fiber link |
+| ❌ No Uncertainty Estimation | Risk goes unquantified, affecting confidence |
+| ❌ Heavy Technician Dependence | High variability in results and knowledge retention |
 
-    - Standard single-mode deployments (SMF, G.652.D, G.657.A1/A2)
-    - Typical lengths (1–30 km)
-    - Common install types: underground, aerial
-    - Reasonable environmental ranges (10–60 °C, humidity < 90%)
-    - Loss budgets between 0.5 and 25 dB
+These lead to:
+- **Resource Wastage** (extra cable, wrong splitters, incorrect routing)
+- **Time Loss** (multiple site visits and recalculations)
+- **Financial Drain** (procurement, re-installation, labor, downtime)
 
-    ### 🔴 Use With Caution:
+---
 
-    - Extremely long or short fibers (<0.5 km or >45 km)
-    - Exotic fiber types (OM5, OM1)
-    - Highly aged installations (>15 years)
-    - Unusual or extreme weather conditions
+## ⚙️ How A.F.D.F.O Works (High-Level)
 
-    ---
+1. **User Input**: Physical, mechanical, and environmental features of the fiber route are entered into the system.
+2. **Feature Engineering**: The system creates additional informative variables by combining or transforming user inputs.
+3. **Missing Data Handling**: If certain values (like bend radius) are not available, they are imputed using learned statistical relationships.
+4. **Prediction**:
+   - The model predicts the **total attenuation**
+   - It also provides a **prediction range** (e.g., 3.2–3.8 dB) using quantile regression
+   - It **separates the loss** into contributing components (e.g., 60% from fiber, 20% from connectors)
+5. **Results Display**: The user receives a clear view of the total loss, where it comes from, and how confident the system is.
 
-    ## 🧑‍💻 Deployment Notes for Engineers
+> All predictions are based on previously learned patterns from simulated deployment scenarios.
 
-    - This model assumes all inputs are consistent and physics-aligned.
-    - Inputs outside trained ranges **will still be accepted**, but predictions may have higher uncertainty.
-    - For production deployment, monitoring prediction uncertainty is strongly advised.
-    - Outputs are intended to **assist**, not replace, expert judgment in deployment planning.
+### System Workflow Diagram
 
-    ---
+The following diagram illustrates the complete A.F.D.F.O workflow, from traditional and AI-enhanced planning approaches:
+    """)
+    
+    # Display the image here
+    st.image("Architecture diagram.png", caption="A.F.D.F.O System Workflow - Traditional vs AI-Enhanced Planning", use_column_width=True)
+    
+    st.markdown("""
+---
 
-    ## 🆕 Prototype Version: `1.0`
+## 🚀 The A.F.D.F.O Advantage
 
-    **Changelog Highlights**
-    - ➕ Added uncertainty prediction (quantile regression)
-    - 🔍 Component-level loss breakdown
-    - 📐 Better feature engineering (interactions and polynomial terms)
-    - ⚙️ Optuna-based tuning for model robustness
-    - 🔎 SHAP explainability integration
+### What the Tool Offers
 
-    ---
+- Predicts total and per-component attenuation using ML
+- Estimates uncertainty bounds with quantile regression
+- Recommends adjustments for:
+  - Splitter ratios
+  - Fiber route optimization
+  - Better component selection
+- Visualizes risk, loss breakdown, and margin forecasts
+- Works efficiently in low-connectivity environments
 
-    ## 📬 Support
+### Workflow Comparison
 
-    For issues or feature requests, please contact Phone Number: 7094501353, Gmail: rlalithkanna@gmail.com
+| Step | Traditional Planning | A.F.D.F.O Planning |
+|------|---------------------|---------------------|
+| Input Design | Manual, static | Real-time + learned patterns |
+| Loss Calculation | Fixed formulas | ML-based with confidence intervals |
+| Risk Analysis | Not available | Built-in, data-driven |
+| Optimization | Trial and error | Guided recommendations |
+| Visual Tools | None | Real-time dashboards |
+| Decision Support | Experience-driven | Transparent, explainable AI |
+
+---
+
+## 🧠 ML Models Used
+
+- **Best Performing Model**: `LightGBM` (Gradient Boosted Decision Trees)
+- **Model Type**: Regression
+- **Features Used**: 25+ input and engineered variables, including environmental, physical, mechanical, and interaction terms
+- **Uncertainty Estimation**: Enabled via **quantile regression**
+- **Component-wise Models**:
+  - fiber_loss_dB
+  - connector_loss_dB
+  - splice_loss_dB
+  - splitter_loss_dB
+  - bend_loss_dB
+  - environmental_loss_dB
+- **Explainability**: Integrated via SHAP (not shown in UI yet)
+- **Tuning Method**: Optuna for hyperparameter optimization
+
+### 🔍 Feature Groups
+
+- **Connections**: 3 features
+- **Engineered**: 5 features
+- **Environmental**: 4 features
+- **Interactions**: 5 features
+- **Mechanical**: 3 features
+- **Physical**: 4 features
+
+---
+
+## 📁 Dataset Overview
+
+The model was trained on a diverse, high-quality dataset that includes:
+
+- Thousands of deployment samples
+- Cleaned and filtered using domain rules (no impossible or negative loss values)
+- Completely based on simulated data covering:
+  - SMF/MMF
+  - Various subtypes (G.652.D, G.657.A1/A2/B3, OM3–OM5)
+  - All major installation types: underground, aerial, building, indoor
+  - Cable types: loose tube, tight buffered, drop, ribbon
+
+### ⚠️ Filtered Data Flags
+- No negative/invalid losses
+- No extreme or inconsistent values
+- Valid physics-based safety margins and component consistency
+
+### 🔢 Numerical Feature Ranges
+
+| Feature | Range |
+|---------|-------|
+| Wavelength (nm) | 850 – 1550 |
+| Length (km) | 0.1 – 45 |
+| Splices | 0 – 40 |
+| Connectors | 2 – 68 |
+| Splitter Ratio | 0 – 32 |
+| Temperature (°C) | -30.5 – 82.9 |
+| Humidity (%) | 15.5 – 94.9 |
+| Bend Radius (mm) | 5 – 94.8 |
+| Age (years) | 0.1 – 15 |
+| Total Attenuation | 0.22 – 80 dB |
+
+> Values outside these ranges may reduce prediction accuracy.
+
+---
+
+## 📈 Model Accuracy & Performance
+
+### 🏆 Overall Metrics (Total Attenuation Prediction)
+
+| Metric | Value |
+|--------|-------|
+| MAE (Mean Abs Error) | 0.29 dB |
+| RMSE | 0.65 dB |
+| MAPE | 1.84% |
+| R² Score | 0.9959 |
+| Predictions within 0.5 dB | 85.96% |
+| Predictions within 1 dB | 94.73% |
+| Predictions within 3 dB | 99.28% |
+| Safety Rule Accuracy | 99.24% |
+
+> These metrics were validated on held-out test data from within the training distribution.
+
+### 🟢 Most Accurate For:
+
+- Standard single-mode deployments (SMF, G.652.D, G.657.A1/A2)
+- Typical lengths (1–30 km)
+- Common install types: underground, aerial
+- Reasonable environmental ranges (10–60 °C, humidity < 90%)
+- Loss budgets between 0.5 and 25 dB
+
+### 🔴 Use With Caution:
+
+- Extremely long or short fibers (<0.5 km or >45 km)
+- Exotic fiber types (OM5, OM1)
+- Highly aged installations (>15 years)
+- Unusual or extreme weather conditions
+
+---
+
+## 🇮🇳 Application Areas in India
+
+### Indian Market Fit
+
+A.F.D.F.O is tailored for India's growing digital infrastructure and small-provider ecosystem. It aligns with the needs of:
+
+- BharatNet FTTH Phase III deployments
+- Small & regional ISPs in Tier 2 and Tier 3 cities
+- Rural digitization initiatives under Digital India
+- Smart Village projects, government campuses, or private institutions
+
+### 📊 Business Opportunity
+
+India's FTTH market is growing rapidly:
+
+- Projected market size: ₹80,000+ crore by 2030
+- Over 1000 small ISPs operate in regional markets
+- Many serve 10–50 km loops, perfect for our model's target range
+- Low access to advanced analytics presents a large tech enablement gap
+
+### 💰 Why This Tool Fits Perfectly
+
+- Low-cost alternative to expensive international tools
+- Designed specifically for Indian field realities
+- Offers fast, accurate, and uncertainty-aware planning in one tool
+- Reduces unnecessary spending due to overestimation
+- Prevents rework costs caused by underestimation
+- Helps small ISPs scale confidently and compete with larger players
+
+---
+
+## 🧑‍💻 Deployment Notes for Engineers
+
+- This model assumes all inputs are consistent and physics-aligned
+- Inputs outside trained ranges **will still be accepted**, but predictions may have higher uncertainty
+- For production deployment, monitoring prediction uncertainty is strongly advised
+- Outputs are intended to **assist**, not replace, expert judgment in deployment planning
+
+---
+
+## 🆕 Prototype Version: `1.1.0`
+
+**Changelog Highlights**
+- ➕ Added uncertainty prediction (quantile regression)
+- 🔍 Component-level loss breakdown
+- 📐 Better feature engineering (interactions and polynomial terms)
+- ⚙️ Optuna-based tuning for model robustness
+- 🔎 SHAP explainability integration
+
+---
+
+## 🎯 Conclusion
+
+Attenuation is a critical factor in the success of fiber network deployment. But existing tools are inaccessible for smaller Indian ISPs due to their cost, complexity, and lack of localization.
+
+A.F.D.F.O is the first tool purpose-built for this gap, bringing:
+
+- AI precision for fiber loss prediction
+- Real-time, component-level insights
+- Risk estimation and guided optimization
+
+All in a simple, affordable, and explainable interface.
+
+It empowers ISPs to build better networks, avoid costly mistakes, and expand rural and urban fiber in line with India's digital goals.
+
+---
+
+## 📬 Support
+
+For issues or feature requests, please contact:
+- **Phone Number**: 7094501353
+- **Gmail**: rlalithkanna@gmail.com
     """)
 
 def render_normal_calculation_page():
