@@ -1319,17 +1319,650 @@ For issues or feature requests, please contact:
 - **Gmail**: rlalithkanna@gmail.com
     """)
 
+
 def render_normal_calculation_page():
-    st.title("📊 Normal Calculation")
-    st.info("🧮 Traditional calculation methods coming soon...")
+    st.title("📊 Normal Calculation - Traditional Methods")
+    
     st.markdown("""
-    This page will include:
-    - Manual attenuation calculations
-    - Industry standard formulas
-    - Component-wise calculations
-    - Comparison with AI predictions
-    - Educational tools
-    """)
+    <div class="nav-card">
+        <h3>🧮 Traditional Fiber Optic Attenuation Calculation</h3>
+        <p>This page provides industry-standard manual calculation methods for fiber optic link budgets. 
+        Compare these traditional approaches with AI predictions to validate and understand the differences.</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Get feature definitions for consistent input handling
+    feature_defs = get_feature_definitions()
+    
+    # Create tabs for different calculation methods
+    tab1, tab2, tab3, tab4 = st.tabs(["🔧 Manual Calculator", "📋 Industry Standards", "📊 Comparison Tool", "📚 Educational Guide"])
+    
+    with tab1:
+        st.markdown("### 🔧 Traditional Link Budget Calculator")
+        
+        col1, col2 = st.columns([1, 2])
+        
+        with col1:
+            st.markdown("#### 📝 Input Parameters")
+            
+            # Collect inputs using the same structure as AI prediction
+            inputs = {}
+            
+            # Physical Parameters
+            with st.expander("🔗 Physical Parameters", expanded=True):
+                inputs['length_km'] = st.number_input(
+                    "Cable Length (km)", 
+                    min_value=0.1, max_value=100.0, value=5.0, step=0.1
+                )
+                inputs['wavelength_nm'] = st.selectbox(
+                    "Wavelength (nm)", 
+                    [850, 1300, 1310, 1550], 
+                    index=3
+                )
+                inputs['fiber_type'] = st.selectbox(
+                    "Fiber Type", 
+                    ["SMF (Single Mode)", "MMF (Multi Mode)"], 
+                    index=0
+                )
+                inputs['fiber_subtype'] = st.selectbox(
+                    "Fiber Grade", 
+                    ["G.652.D", "G.657.A1", "G.657.A2", "G.657.B3", "G.655", "OM1", "OM2", "OM3", "OM4", "OM5"],
+                    index=0
+                )
+            
+            # Connection Parameters
+            with st.expander("🔌 Connection Parameters", expanded=True):
+                inputs['num_splices'] = st.number_input(
+                    "Number of Splices", 
+                    min_value=0, max_value=50, value=2, step=1
+                )
+                inputs['num_connectors'] = st.number_input(
+                    "Number of Connectors", 
+                    min_value=2, max_value=20, value=2, step=1
+                )
+                inputs['splitter_ratio'] = st.selectbox(
+                    "Splitter Ratio (1:N)", 
+                    [1, 2, 4, 8, 16, 32, 64], 
+                    index=0
+                )
+            
+            # Environmental & Installation
+            with st.expander("🌡️ Environmental Factors", expanded=False):
+                inputs['temperature_c'] = st.number_input(
+                    "Operating Temperature (°C)", 
+                    min_value=-40.0, max_value=85.0, value=25.0, step=5.0
+                )
+                inputs['installation_type'] = st.selectbox(
+                    "Installation Type", 
+                    ["Underground", "Aerial", "Indoor", "Duct"], 
+                    index=0
+                )
+                inputs['age_years'] = st.number_input(
+                    "Cable Age (years)", 
+                    min_value=0, max_value=30, value=0, step=1
+                )
+            
+            # Advanced Parameters
+            with st.expander("⚙️ Advanced Parameters", expanded=False):
+                inputs['bend_radius_mm'] = st.number_input(
+                    "Minimum Bend Radius (mm)", 
+                    min_value=5.0, max_value=100.0, value=15.0, step=1.0
+                )
+                inputs['num_bends'] = st.number_input(
+                    "Number of Bends", 
+                    min_value=0, max_value=20, value=4, step=1
+                )
+                inputs['safety_margin_db'] = st.number_input(
+                    "Safety Margin (dB)", 
+                    min_value=1.0, max_value=10.0, value=3.0, step=0.5
+                )
+            
+            # Power Budget Parameters
+            with st.expander("⚡ Power Budget", expanded=True):
+                inputs['tx_power_dbm'] = st.number_input(
+                    "Transmitter Power (dBm)", 
+                    min_value=-10.0, max_value=10.0, value=0.0, step=0.1
+                )
+                inputs['rx_sensitivity_dbm'] = st.number_input(
+                    "Receiver Sensitivity (dBm)", 
+                    min_value=-40.0, max_value=-10.0, value=-25.0, step=0.1
+                )
+            
+            calculate_button = st.button("🧮 Calculate Traditional Loss", type="primary", use_container_width=True)
+        
+        with col2:
+            st.markdown("#### 📊 Traditional Calculation Results")
+            
+            if calculate_button:
+                # Perform traditional calculations
+                traditional_results = calculate_traditional_loss(inputs)
+                
+                # Display main results
+                col_a, col_b, col_c = st.columns(3)
+                
+                with col_a:
+                    st.markdown(f"""
+                    <div class="metric-card">
+                        <h3>📉 Total Loss</h3>
+                        <h2>{traditional_results['total_loss']:.3f} dB</h2>
+                        <p>Traditional Method</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col_b:
+                    power_budget = inputs['tx_power_dbm'] - inputs['rx_sensitivity_dbm']
+                    st.markdown(f"""
+                    <div class="metric-card">
+                        <h3>⚡ Power Budget</h3>
+                        <h2>{power_budget:.1f} dB</h2>
+                        <p>Available</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col_c:
+                    margin = power_budget - traditional_results['total_loss'] - inputs['safety_margin_db']
+                    margin_color = "green" if margin > 0 else "red"
+                    st.markdown(f"""
+                    <div class="metric-card" style="background: {margin_color};">
+                        <h3>🎯 System Margin</h3>
+                        <h2>{margin:.2f} dB</h2>
+                        <p>{'PASS' if margin > 0 else 'FAIL'}</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # Component breakdown
+                st.markdown("#### 🔍 Loss Component Breakdown")
+                
+                components_df = pd.DataFrame([
+                    {"Component": "Fiber Loss", "Loss (dB)": traditional_results['fiber_loss'], "Formula": f"{traditional_results['attenuation_coeff']:.2f} × {inputs['length_km']}"},
+                    {"Component": "Splice Loss", "Loss (dB)": traditional_results['splice_loss'], "Formula": f"{inputs['num_splices']} × 0.05"},
+                    {"Component": "Connector Loss", "Loss (dB)": traditional_results['connector_loss'], "Formula": f"{inputs['num_connectors']} × 0.25"},
+                    {"Component": "Splitter Loss", "Loss (dB)": traditional_results['splitter_loss'], "Formula": f"10 × log10({inputs['splitter_ratio']})"},
+                    {"Component": "Bend Loss", "Loss (dB)": traditional_results['bend_loss'], "Formula": "Calculated from bend parameters"},
+                    {"Component": "Environmental Loss", "Loss (dB)": traditional_results['environmental_loss'], "Formula": "Temperature + Age factors"},
+                    {"Component": "Total Loss", "Loss (dB)": traditional_results['total_loss'], "Formula": "Sum of all components"}
+                ])
+                
+                st.dataframe(components_df, use_container_width=True)
+                
+                # Visualization
+                fig = px.pie(
+                    values=[traditional_results['fiber_loss'], traditional_results['splice_loss'], 
+                           traditional_results['connector_loss'], traditional_results['splitter_loss'],
+                           traditional_results['bend_loss'], traditional_results['environmental_loss']],
+                    names=['Fiber Loss', 'Splice Loss', 'Connector Loss', 'Splitter Loss', 'Bend Loss', 'Environmental Loss'],
+                    title="Traditional Loss Breakdown"
+                )
+                st.plotly_chart(fig, use_container_width=True)
+                
+                # Power budget chart
+                budget_fig = go.Figure()
+                budget_fig.add_trace(go.Bar(
+                    x=['Available Budget', 'Total Loss', 'Safety Margin', 'Remaining Margin'],
+                    y=[power_budget, traditional_results['total_loss'], inputs['safety_margin_db'], max(0, margin)],
+                    marker_color=['lightblue', 'orange', 'yellow', 'lightgreen' if margin > 0 else 'red']
+                ))
+                budget_fig.update_layout(title="Power Budget Analysis", yaxis_title="Power (dB)")
+                st.plotly_chart(budget_fig, use_container_width=True)
+    
+    with tab2:
+        st.markdown("### 📋 Industry Standard Values & Formulas")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("#### 🔗 Fiber Attenuation Coefficients")
+            fiber_specs = pd.DataFrame([
+                {"Fiber Type": "SMF G.652.D", "1310nm (dB/km)": "≤ 0.35", "1550nm (dB/km)": "≤ 0.25"},
+                {"Fiber Type": "SMF G.657.A1", "1310nm (dB/km)": "≤ 0.35", "1550nm (dB/km)": "≤ 0.25"},
+                {"Fiber Type": "SMF G.657.A2", "1310nm (dB/km)": "≤ 0.35", "1550nm (dB/km)": "≤ 0.25"},
+                {"Fiber Type": "MMF OM1", "850nm (dB/km)": "≤ 3.5", "1300nm (dB/km)": "≤ 1.5"},
+                {"Fiber Type": "MMF OM2", "850nm (dB/km)": "≤ 3.5", "1300nm (dB/km)": "≤ 1.5"},
+                {"Fiber Type": "MMF OM3", "850nm (dB/km)": "≤ 3.5", "1300nm (dB/km)": "≤ 1.5"},
+                {"Fiber Type": "MMF OM4", "850nm (dB/km)": "≤ 3.5", "1300nm (dB/km)": "≤ 1.5"},
+                {"Fiber Type": "MMF OM5", "850nm (dB/km)": "≤ 3.0", "1300nm (dB/km)": "≤ 1.5"}
+            ])
+            st.dataframe(fiber_specs, use_container_width=True)
+            
+            st.markdown("#### 🔌 Connection Loss Standards")
+            connection_specs = pd.DataFrame([
+                {"Component": "Fusion Splice", "Typical Loss (dB)": "0.05", "Max Loss (dB)": "0.10"},
+                {"Component": "Mechanical Splice", "Typical Loss (dB)": "0.10", "Max Loss (dB)": "0.20"},
+                {"Component": "SC/FC Connector", "Typical Loss (dB)": "0.25", "Max Loss (dB)": "0.50"},
+                {"Component": "LC Connector", "Typical Loss (dB)": "0.20", "Max Loss (dB)": "0.40"},
+                {"Component": "ST Connector", "Typical Loss (dB)": "0.30", "Max Loss (dB)": "0.60"}
+            ])
+            st.dataframe(connection_specs, use_container_width=True)
+        
+        with col2:
+            st.markdown("#### 📐 Splitter Loss Values")
+            splitter_specs = pd.DataFrame([
+                {"Split Ratio": "1:2", "Loss (dB)": "3.5", "Theoretical (dB)": "3.01"},
+                {"Split Ratio": "1:4", "Loss (dB)": "7.0", "Theoretical (dB)": "6.02"},
+                {"Split Ratio": "1:8", "Loss (dB)": "10.5", "Theoretical (dB)": "9.03"},
+                {"Split Ratio": "1:16", "Loss (dB)": "14.0", "Theoretical (dB)": "12.04"},
+                {"Split Ratio": "1:32", "Loss (dB)": "17.5", "Theoretical (dB)": "15.05"},
+                {"Split Ratio": "1:64", "Loss (dB)": "21.0", "Theoretical (dB)": "18.06"}
+            ])
+            st.dataframe(splitter_specs, use_container_width=True)
+            
+            st.markdown("#### 🧮 Key Formulas")
+            st.markdown("""
+            **Total Link Loss:**
+            ```
+            Total Loss = Fiber Loss + Splice Loss + Connector Loss + 
+                        Splitter Loss + Bend Loss + Environmental Loss
+            ```
+            
+            **Fiber Loss:**
+            ```
+            Fiber Loss = Attenuation Coefficient × Length
+            ```
+            
+            **Splice Loss:**
+            ```
+            Splice Loss = Number of Splices × Loss per Splice
+            ```
+            
+            **Connector Loss:**
+            ```
+            Connector Loss = Number of Connectors × Loss per Connector
+            ```
+            
+            **Splitter Loss:**
+            ```
+            Splitter Loss = 10 × log10(Split Ratio)
+            ```
+            
+            **Power Budget:**
+            ```
+            Available Budget = TX Power - RX Sensitivity
+            Required Budget = Total Loss + Safety Margin
+            System Margin = Available Budget - Required Budget
+            ```
+            """)
+    
+    with tab3:
+        st.markdown("### 📊 AI vs Traditional Comparison Tool")
+        
+        st.info("🔍 Compare traditional calculations with AI predictions using the same input parameters")
+        
+        # Load AI models for comparison
+        models = load_all_models()
+        
+        col1, col2 = st.columns([1, 2])
+        
+        with col1:
+            st.markdown("#### 🎛️ Comparison Parameters")
+            
+            # Quick input form for comparison
+            comp_inputs = {}
+            comp_inputs['length_km'] = st.slider("Length (km)", 0.5, 20.0, 5.0, 0.5)
+            comp_inputs['wavelength_nm'] = st.selectbox("Wavelength", [1310, 1550], key="comp_wl")
+            comp_inputs['fiber_type'] = st.selectbox("Fiber Type", ["SMF", "MMF"], key="comp_fiber")
+            comp_inputs['num_splices'] = st.slider("Splices", 0, 10, 2)
+            comp_inputs['num_connectors'] = st.slider("Connectors", 2, 10, 2)
+            comp_inputs['splitter_ratio'] = st.selectbox("Splitter", [1, 2, 4, 8, 16], key="comp_split")
+            
+            # Set defaults for other required parameters
+            comp_inputs.update({
+                'fiber_subtype': 'G.652.D',
+                'temperature_c': 25.0,
+                'installation_type': 'Underground',
+                'age_years': 2,
+                'bend_radius_mm': 15.0,
+                'num_bends': 4,
+                'safety_margin_db': 3.0,
+                'tx_power_dbm': 0.0,
+                'rx_sensitivity_dbm': -25.0
+            })
+            
+            compare_button = st.button("🔍 Compare Methods", type="primary", use_container_width=True)
+        
+        with col2:
+            if compare_button:
+                st.markdown("#### 📈 Comparison Results")
+                
+                # Calculate traditional
+                traditional = calculate_traditional_loss(comp_inputs)
+                
+                # Calculate AI prediction (simplified)
+                ai_inputs_formatted = format_inputs_for_ai(comp_inputs)
+                ai_components = predict_component_losses(ai_inputs_formatted, models)
+                ai_total = sum(ai_components.values())
+                
+                # Comparison metrics
+                difference = ai_total - traditional['total_loss']
+                percent_diff = (difference / traditional['total_loss']) * 100
+                
+                col_a, col_b, col_c = st.columns(3)
+                
+                with col_a:
+                    st.metric("🧮 Traditional", f"{traditional['total_loss']:.3f} dB")
+                with col_b:
+                    st.metric("🤖 AI Prediction", f"{ai_total:.3f} dB")
+                with col_c:
+                    st.metric("📊 Difference", f"{difference:.3f} dB", f"{percent_diff:.1f}%")
+                
+                # Component comparison
+                comparison_df = pd.DataFrame({
+                    'Component': ['Fiber', 'Splice', 'Connector', 'Splitter', 'Bend', 'Environmental', 'TOTAL'],
+                    'Traditional (dB)': [
+                        traditional['fiber_loss'],
+                        traditional['splice_loss'], 
+                        traditional['connector_loss'],
+                        traditional['splitter_loss'],
+                        traditional['bend_loss'],
+                        traditional['environmental_loss'],
+                        traditional['total_loss']
+                    ],
+                    'AI Prediction (dB)': [
+                        ai_components.get('fiber_loss', 0),
+                        ai_components.get('splice_loss', 0),
+                        ai_components.get('connector_loss', 0),
+                        ai_components.get('splitter_loss', 0),
+                        ai_components.get('bend_loss', 0),
+                        ai_components.get('environmental_loss', 0),
+                        ai_total
+                    ]
+                })
+                
+                comparison_df['Difference (dB)'] = comparison_df['AI Prediction (dB)'] - comparison_df['Traditional (dB)']
+                comparison_df['Difference (%)'] = (comparison_df['Difference (dB)'] / comparison_df['Traditional (dB)']) * 100
+                
+                st.dataframe(comparison_df.round(3), use_container_width=True)
+                
+                # Visualization
+                fig = go.Figure()
+                fig.add_trace(go.Bar(
+                    x=comparison_df['Component'][:-1],  # Exclude total
+                    y=comparison_df['Traditional (dB)'][:-1],
+                    name='Traditional',
+                    marker_color='lightblue'
+                ))
+                fig.add_trace(go.Bar(
+                    x=comparison_df['Component'][:-1],
+                    y=comparison_df['AI Prediction (dB)'][:-1],
+                    name='AI Prediction',
+                    marker_color='lightcoral'
+                ))
+                fig.update_layout(
+                    title="Component Loss Comparison: Traditional vs AI",
+                    yaxis_title="Loss (dB)",
+                    barmode='group'
+                )
+                st.plotly_chart(fig, use_container_width=True)
+    
+    with tab4:
+        st.markdown("### 📚 Educational Guide - Understanding Fiber Loss")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("""
+            #### 🔍 What is Fiber Optic Attenuation?
+            
+            **Attenuation** is the reduction in optical power as light travels through a fiber optic cable. It's measured in decibels (dB) and represents the ratio of input power to output power.
+            
+            **Formula:** `Attenuation (dB) = 10 × log₁₀(P_input / P_output)`
+            
+            #### 📊 Types of Losses
+            
+            **1. Intrinsic Losses (inherent to fiber):**
+            - Rayleigh Scattering
+            - Absorption (OH⁻ ions, impurities)
+            - Material imperfections
+            
+            **2. Extrinsic Losses (installation-related):**
+            - Bending losses (macro and micro)
+            - Connection losses (splices, connectors)
+            - Environmental factors
+            
+            **3. System Losses:**
+            - Splitter losses
+            - Wavelength division multiplexer (WDM) losses
+            - Patch panel losses
+            """)
+        
+        with col2:
+            st.markdown("""
+            #### 🧮 Traditional Calculation Process
+            
+            **Step 1: Gather Parameters**
+            - Cable length and type
+            - Number and type of connections
+            - Environmental conditions
+            - System requirements
+            
+            **Step 2: Apply Standard Values**
+            - Use ITU-T recommendations
+            - Apply manufacturer specifications
+            - Include safety margins
+            
+            **Step 3: Calculate Each Component**
+            ```python
+            fiber_loss = length × attenuation_coefficient
+            splice_loss = num_splices × 0.05  # typical
+            connector_loss = num_connectors × 0.25  # typical
+            splitter_loss = 10 × log10(split_ratio)
+            ```
+            
+            **Step 4: Sum All Losses**
+            ```python
+            total_loss = fiber_loss + splice_loss + 
+                        connector_loss + splitter_loss + 
+                        bend_loss + environmental_loss
+            ```
+            
+            **Step 5: Check Power Budget**
+            ```python
+            available_budget = tx_power - rx_sensitivity
+            required_budget = total_loss + safety_margin
+            margin = available_budget - required_budget
+            ```
+            """)
+        
+        st.markdown("#### 🎯 Best Practices for Link Budget Calculations")
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.markdown("""
+            **📐 Design Phase:**
+            - Use conservative attenuation values
+            - Include 15-20% safety margin
+            - Plan for future connections
+            - Consider environmental extremes
+            """)
+        
+        with col2:
+            st.markdown("""
+            **🔧 Installation Phase:**
+            - Verify actual splice losses
+            - Measure bend radii
+            - Document connection types
+            - Test with OTDR if available
+            """)
+        
+        with col3:
+            st.markdown("""
+            **✅ Verification Phase:**
+            - Measure end-to-end loss
+            - Compare with calculations
+            - Document deviations
+            - Update future calculations
+            """)
+        
+        # Interactive loss calculator widget
+        st.markdown("#### 🧮 Quick Loss Calculator")
+        
+        calc_col1, calc_col2, calc_col3 = st.columns(3)
+        
+        with calc_col1:
+            quick_length = st.number_input("Cable Length (km)", value=1.0, min_value=0.1, key="quick_len")
+            quick_atten = st.number_input("Attenuation Coeff (dB/km)", value=0.25, min_value=0.1, key="quick_att")
+        
+        with calc_col2:
+            quick_splices = st.number_input("Splices", value=0, min_value=0, key="quick_splice")
+            quick_connectors = st.number_input("Connectors", value=2, min_value=0, key="quick_conn")
+        
+        with calc_col3:
+            quick_split = st.selectbox("Splitter Ratio", [1, 2, 4, 8, 16, 32], key="quick_split_ratio")
+            
+            # Calculate quick result
+            quick_fiber = quick_length * quick_atten
+            quick_splice_loss = quick_splices * 0.05
+            quick_conn_loss = quick_connectors * 0.25
+            quick_split_loss = 10 * np.log10(quick_split) if quick_split > 1 else 0
+            quick_total = quick_fiber + quick_splice_loss + quick_conn_loss + quick_split_loss
+            
+            st.metric("Quick Total Loss", f"{quick_total:.2f} dB")
+
+
+def calculate_traditional_loss(inputs):
+    """
+    Calculate attenuation using traditional industry standard methods
+    """
+    # Initialize results dictionary
+    results = {}
+    
+    # 1. Fiber Loss Calculation
+    # Standard attenuation coefficients based on fiber type and wavelength
+    fiber_type = inputs.get('fiber_type', 'SMF (Single Mode)')
+    wavelength = inputs.get('wavelength_nm', 1550)
+    length = inputs.get('length_km', 1.0)
+    
+    # Determine attenuation coefficient
+    if 'SMF' in fiber_type or fiber_type == 'SMF':
+        if wavelength == 1310:
+            attenuation_coeff = 0.35  # dB/km
+        elif wavelength == 1550:
+            attenuation_coeff = 0.25  # dB/km
+        else:
+            attenuation_coeff = 0.30  # default for other wavelengths
+    else:  # MMF
+        if wavelength == 850:
+            attenuation_coeff = 3.0   # dB/km
+        elif wavelength == 1300:
+            attenuation_coeff = 1.0   # dB/km
+        else:
+            attenuation_coeff = 2.0   # default
+    
+    results['attenuation_coeff'] = attenuation_coeff
+    results['fiber_loss'] = length * attenuation_coeff
+    
+    # 2. Splice Loss Calculation
+    num_splices = inputs.get('num_splices', 0)
+    splice_loss_per_splice = 0.05  # dB per fusion splice (typical)
+    results['splice_loss'] = num_splices * splice_loss_per_splice
+    
+    # 3. Connector Loss Calculation
+    num_connectors = inputs.get('num_connectors', 2)
+    connector_loss_per_connector = 0.25  # dB per connector (typical)
+    results['connector_loss'] = num_connectors * connector_loss_per_connector
+    
+    # 4. Splitter Loss Calculation
+    splitter_ratio = inputs.get('splitter_ratio', 1)
+    if splitter_ratio > 1:
+        results['splitter_loss'] = 10 * np.log10(splitter_ratio)
+    else:
+        results['splitter_loss'] = 0.0
+    
+    # 5. Bend Loss Calculation
+    bend_radius = inputs.get('bend_radius_mm', 15.0)
+    num_bends = inputs.get('num_bends', 0)
+    
+    # Simplified bend loss calculation
+    if 'SMF' in fiber_type:
+        critical_radius = 10.0  # mm for SMF
+    else:
+        critical_radius = 30.0  # mm for MMF
+    
+    if bend_radius < critical_radius:
+        bend_loss_per_bend = 0.1 * (critical_radius / bend_radius)
+    else:
+        bend_loss_per_bend = 0.01  # minimal loss for proper bends
+    
+    results['bend_loss'] = num_bends * bend_loss_per_bend
+    
+    # 6. Environmental Loss Calculation
+    temperature = inputs.get('temperature_c', 25.0)
+    age_years = inputs.get('age_years', 0)
+    installation_type = inputs.get('installation_type', 'Underground')
+    
+    # Temperature factor
+    temp_factor = abs(temperature - 25) * 0.001  # 0.001 dB per degree deviation from 25°C
+    
+    # Age factor
+    age_factor = age_years * 0.01  # 0.01 dB per year of aging
+    
+    # Installation factor
+    installation_factors = {
+        'Underground': 0.05,
+        'Aerial': 0.10,
+        'Indoor': 0.02,
+        'Duct': 0.03
+    }
+    installation_factor = installation_factors.get(installation_type, 0.05)
+    
+    results['environmental_loss'] = temp_factor + age_factor + installation_factor
+    
+    # 7. Total Loss Calculation
+    results['total_loss'] = (results['fiber_loss'] + 
+                           results['splice_loss'] + 
+                           results['connector_loss'] + 
+                           results['splitter_loss'] + 
+                           results['bend_loss'] + 
+                           results['environmental_loss'])
+    
+    return results
+
+
+def format_inputs_for_ai(inputs):
+    """
+    Format traditional calculation inputs for AI model prediction
+    """
+    ai_inputs = {}
+    
+    # Map traditional inputs to AI model expected inputs
+    ai_inputs['length_km'] = inputs.get('length_km', 1.0)
+    ai_inputs['wavelength_nm'] = inputs.get('wavelength_nm', 1550)
+    ai_inputs['num_splices'] = inputs.get('num_splices', 0)
+    ai_inputs['num_connectors'] = inputs.get('num_connectors', 2)
+    ai_inputs['splitter_ratio'] = inputs.get('splitter_ratio', 1)
+    
+    # Convert fiber type
+    fiber_type = inputs.get('fiber_type', 'SMF')
+    if 'SMF' in fiber_type or fiber_type == 'SMF':
+        ai_inputs['fiber_type_encoded'] = 'SMF'
+    else:
+        ai_inputs['fiber_type_encoded'] = 'MMF'
+    
+    ai_inputs['fiber_subtype_encoded'] = inputs.get('fiber_subtype', 'G.652.D')
+    
+    # Convert installation type
+    installation_mapping = {
+        'Underground': 'Underground',
+        'Aerial': 'Aerial', 
+        'Indoor': 'Indoor',
+        'Duct': 'Building'
+    }
+    ai_inputs['installation_type_encoded'] = installation_mapping.get(
+        inputs.get('installation_type', 'Underground'), 'Underground'
+    )
+    
+    ai_inputs['cable_type_encoded'] = 'Loose Tube'  # default
+    ai_inputs['temperature_C'] = inputs.get('temperature_c', 25.0)
+    ai_inputs['humidity_percent'] = 50.0  # default
+    ai_inputs['age_years'] = inputs.get('age_years', 0)
+    ai_inputs['environmental_stress'] = 0.3  # default
+    ai_inputs['bend_radius_mm'] = inputs.get('bend_radius_mm', 15.0)
+    ai_inputs['num_bends'] = inputs.get('num_bends', 4)
+    ai_inputs['transmitter_power_dbm'] = inputs.get('tx_power_dbm', 0.0)
+    ai_inputs['receiver_sensitivity_dbm'] = inputs.get('rx_sensitivity_dbm', -25.0)
+    ai_inputs['safety_margin_db'] = inputs.get('safety_margin_db', 3.0)
+    
+    return ai_inputs
 
 # Main app logic
 def main():
